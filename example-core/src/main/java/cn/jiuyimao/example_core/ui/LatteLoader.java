@@ -22,7 +22,7 @@ import cn.jiuyimao.example_core.util.DimenUtil;
 public class LatteLoader {
 
     private static final int LOADER_SEZE_SCALE = 8;
-    private static final int LOADER_OFFSET_SCALE = 20;
+    private static final int LOADER_OFFSET_SCALE = 10;
 
     private static final ArrayList <AppCompatDialog> LOADERS = new ArrayList<>();
 
