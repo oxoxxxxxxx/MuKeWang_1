@@ -1,10 +1,14 @@
-package cn.jiuyimao.example_core.net;
+package cn.jiuyimao.example_core.net.rx;
 
 import android.content.Context;
 
 import java.io.File;
 import java.util.WeakHashMap;
 
+import cn.jiuyimao.example_core.net.HttpMethod;
+import cn.jiuyimao.example_core.net.RestClientBuilder;
+import cn.jiuyimao.example_core.net.RestCreator;
+import cn.jiuyimao.example_core.net.RestService;
 import cn.jiuyimao.example_core.net.callback.IError;
 import cn.jiuyimao.example_core.net.callback.IFailure;
 import cn.jiuyimao.example_core.net.callback.IRequest;
@@ -13,12 +17,13 @@ import cn.jiuyimao.example_core.net.callback.RequestCallBack;
 import cn.jiuyimao.example_core.net.download.DownloadHandler;
 import cn.jiuyimao.example_core.ui.LatteLoader;
 import cn.jiuyimao.example_core.ui.LoaderStyle;
+import io.reactivex.Observable;
 import okhttp3.MediaType;
 import okhttp3.MultipartBody;
 import okhttp3.RequestBody;
+import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.Callback;
-import retrofit2.http.PUT;
 
 /**
  * # 作者：王宏伟
@@ -26,113 +31,83 @@ import retrofit2.http.PUT;
  * # 描述：织巢鸟科技
  */
 
-public class RestClient {
+public class RxRestClient {
 
     private final String URL;
     private static final WeakHashMap<String, Object> PARAMS = RestCreator.getParams();
-    private final IRequest REQUST;
-    private final ISuccess SUCCESS;
-    private final IError ERROR;
-    private final IFailure FAILURE;
-    private final String DOWNLOAD_DIR;
-    private final String EXTENSION;
-    private final String NAME;
     private final RequestBody BODY;
     private final LoaderStyle LOADER_STYLE;
     private final Context CONTEXT;
     private final File FILE;
 
 
-    public RestClient(String url,
-                      WeakHashMap<String, Object> params,
-                      IRequest requst,
-                      ISuccess success,
-                      IError error,
-                      IFailure failure,
-                      RequestBody body,
-                      LoaderStyle loaderStyle,
-                      Context context,
-                      File file,
-                      String downLoadDir,
-                      String extension,
-                      String name) {
+    public RxRestClient(String url,
+                        WeakHashMap<String, Object> params,
+                        RequestBody body,
+                        LoaderStyle loaderStyle,
+                        Context context,
+                        File file) {
         URL = url;
         PARAMS.putAll(params);
-        REQUST = requst;
-        SUCCESS = success;
-        ERROR = error;
-        FAILURE = failure;
         BODY = body;
         LOADER_STYLE = loaderStyle;
         CONTEXT = context;
         FILE = file;
-        DOWNLOAD_DIR = downLoadDir;
-        EXTENSION = extension;
-        NAME = name;
     }
 
-    public static RestClientBuilder sBuilder() {
-        return new RestClientBuilder();
+    public static RxRestClientBuilder sBuilder() {
+        return new RxRestClientBuilder();
     }
 
-    private void request(HttpMethod method) {
-        final RestService service = RestCreator.getRestService();
-        Call<String> call = null;
-        if (REQUST != null) {
-            REQUST.onRequstStart();
-        }
+    private Observable<String> request(HttpMethod method) {
+        final RxRestService service = RestCreator.getRxRestService();
+        Observable<String> observable  = null;
         if (LOADER_STYLE != null) {
             LatteLoader.showLoading(CONTEXT, LOADER_STYLE);
         }
         switch (method) {
             case GET:
 
-                call = service.get(URL, PARAMS);
+                observable = service.get(URL, PARAMS);
                 break;
             case POST:
 
-                call = service.post(URL, PARAMS);
+                observable = service.post(URL, PARAMS);
                 break;
             case POST_RAW:
 
-                call = service.postRaw(URL, BODY);
+                observable = service.postRaw(URL, BODY);
                 break;
             case PUT:
 
-                call = service.put(URL, PARAMS);
+                observable = service.put(URL, PARAMS);
                 break;
 
             case PUT_RAW:
 
-                call = service.putRaw(URL, BODY);
+                observable = service.putRaw(URL, BODY);
                 break;
             case DELETE:
 
-                call = service.delete(URL, PARAMS);
+                observable = service.delete(URL, PARAMS);
                 break;
             case UPLOAD:
 
                 final RequestBody requestBody = RequestBody.create(MediaType.parse(MultipartBody.FORM.toString()), FILE);
                 final MultipartBody.Part body = MultipartBody.Part.createFormData("file", FILE.getName());
-                call = service.upload(URL, body);
+                observable = service.upload(URL, body);
                 break;
 
             default:
                 break;
         }
-
-        if (call != null) {
-            call.enqueue(getRequestCallback());
-        }
+        return observable;
 
     }
 
-    private Callback<String> getRequestCallback() {
-        return new RequestCallBack(SUCCESS, ERROR, FAILURE, REQUST, LOADER_STYLE);
-    }
 
-    public final void get() {
-        request(HttpMethod.GET);
+    public final Observable<String> get() {
+       return request(HttpMethod.GET);
     }
 
     public final void post() {
@@ -147,27 +122,29 @@ public class RestClient {
 
     }
 
-    public final void put() {
+    public final Observable<String> put() {
         if (BODY == null) {
-            request(HttpMethod.PUT);
+          return request(HttpMethod.PUT);
         } else {
             if (!PARAMS.isEmpty()) {
                 throw new RuntimeException("params must be null!");
             }
-            request(HttpMethod.PUT_RAW);
+           return request(HttpMethod.PUT_RAW);
         }
     }
 
-    public final void delete() {
-        request(HttpMethod.DELETE);
+    public final  Observable<String> delete() {
+      return request(HttpMethod.DELETE);
     }
 
-    public final void upload() {
-        request(HttpMethod.UPLOAD);
+    public final  Observable<String> upload() {
+      return request(HttpMethod.UPLOAD);
     }
 
-    public final void download() {
-        new DownloadHandler(URL, REQUST, SUCCESS, ERROR, FAILURE, DOWNLOAD_DIR, EXTENSION, NAME).handlerDownload();
+    public final  Observable<ResponseBody> download() {
+        final Observable<ResponseBody> responseBodyObservable = RestCreator.getRxRestService().download(URL,PARAMS);
+        return responseBodyObservable;
+//       return new DownloadHandler(URL, REQUST, SUCCESS, ERROR, FAILURE, DOWNLOAD_DIR, EXTENSION, NAME).handlerDownload();
     }
 
 }

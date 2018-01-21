@@ -9,4 +9,5 @@ package cn.jiuyimao.example_core.net.callback;
 public interface IError {
 
     void OnError(int code ,String massage);
+
 }
